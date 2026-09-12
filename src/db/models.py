@@ -52,3 +52,22 @@ class Run(Base):
     changes_found = Column(Boolean, nullable=False, default=False)
     email_sent = Column(Boolean, nullable=False, default=False)
     notes = Column(String, nullable=True)
+
+class Change(Base):
+    __tablename__ = "changes"
+
+    id = Column(Integer, primary_key=True)
+    old_snapshot_id = Column(Integer, ForeignKey("snapshots.id"), nullable=True)
+    new_snapshot_id = Column(Integer, ForeignKey("snapshots.id"), nullable=False)
+
+    htsno = Column(String, nullable=True)
+    chapter = Column(String, nullable=True)
+    section = Column(String, nullable=True)
+    description = Column(String, nullable=True)
+
+    change_type = Column(String, nullable=False)
+    field_changed = Column(String, nullable=True)
+    old_value = Column(String, nullable=True)
+    new_value = Column(String, nullable=True)
+
+    detected_at = Column(DateTime, nullable=False, default=datetime.utcnow)
