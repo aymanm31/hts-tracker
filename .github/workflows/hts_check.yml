@@ -18,6 +18,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Test USITC connectivity #debug lines
+        run: curl -v --max-time 30 "https://hts.usitc.gov/reststop/exportList?from=0101&to=0105&format=JSON&styles=true" #debug lines
+
       - name: Run HTS check
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
