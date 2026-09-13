@@ -8,6 +8,9 @@ from src.diffing.compare import compare_snapshots
 from src.diffing.save_changes import save_changes
 from src.summarize.summarize import build_report
 from src.notify.email_sender import send_email
+from src.db.models import LineItem, Change
+
+SNAPSHOT_RETENTION_COUNT = 5  # always keep at least this many most-recent snapshots
 
 
 def get_latest_snapshot_id():
@@ -74,3 +77,35 @@ def run_check(from_code="0101", to_code="9999"):
 
     log_run(new_snapshot_id, True, email_sent, f"{len(changes)} changes detected")
     print(f"Done. {len(changes)} changes found. Email sent: {email_sent}")
+
+def prune_old_snapshots():
+    session = SessionLocal()
+    try:
+        all_snapshots = session.query(Snapshot).order_by(Snapshot.fetched_at.desc()).all()
+
+        if len(all_snapshots) <= SNAPSHOT_RETENTION_COUNT:
+            return
+
+        candidates_for_deletion = all_snapshots[SNAPSHOT_RETENTION_COUNT:]
+
+        referenced_ids = {
+            row[0] for row in session.query(Change.old_snapshot_id).distinct()
+        } | {
+            row[0] for row in session.query(Change.new_snapshot_id).distinct()
+        }
+
+        deleted_count = 0
+        for snapshot in candidates_for_deletion:
+            if snapshot.id in referenced_ids:
+                continue
+
+            session.query(Run).filter_by(snapshot_id=snapshot.id).update({"snapshot_id": None})
+            session.query(LineItem).filter_by(snapshot_id=snapshot.id).delete()
+            session.delete(snapshot)
+            deleted_count += 1
+
+        session.commit()
+        if deleted_count:
+            print(f"Pruned {deleted_count} old snapshot(s).")
+    finally:
+        session.close()
