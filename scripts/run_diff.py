@@ -1,8 +1,10 @@
+import src.config  # noqa: F401 — loads .env, must be imported first
 from src.db.connection import SessionLocal
 from src.db.models import Snapshot
 from src.diffing.compare import compare_snapshots
 from src.diffing.save_changes import save_changes
 from src.summarize.summarize import build_report
+from src.notify.email_sender import send_email
 
 session = SessionLocal()
 snapshots = session.query(Snapshot).order_by(Snapshot.fetched_at.desc()).limit(2).all()
@@ -26,5 +28,12 @@ else:
 
 if changes:
     report = build_report(changes)
-    print("\n--- REPORT ---\n")
-    print(report)
+
+    if changes:
+        send_email(
+            subject=f"HTS Change Report — {len(changes)} change(s) detected",
+            body=report
+        )
+        print("Email sent.")
+    else:
+        print("No changes — no email sent.")

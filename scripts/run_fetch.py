@@ -1,3 +1,4 @@
+import src.config  # noqa: F401 — loads .env, must be imported first
 from src.ingestion.fetch import fetch_hts
 from src.ingestion.save import save_snapshot
 
