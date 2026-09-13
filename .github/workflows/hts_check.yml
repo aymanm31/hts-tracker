@@ -2,8 +2,9 @@ name: HTS Daily Check
 
 on:
   schedule:
-    - cron: "0 13 * * *" # 13:00 UTC daily — adjust to your preferred time
-  workflow_dispatch: {} # lets you manually trigger a run from the GitHub UI too
+    - cron: "42 7 * * *"
+      timezone: "America/New_York"
+  workflow_dispatch: {}
 
 jobs:
   check:
