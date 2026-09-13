@@ -9,6 +9,7 @@ from src.diffing.save_changes import save_changes
 from src.summarize.summarize import build_report
 from src.notify.email_sender import send_email
 from src.db.models import LineItem, Change
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 
 SNAPSHOT_RETENTION_COUNT = 5  # always keep at least this many most-recent snapshots
 
@@ -41,7 +42,12 @@ def run_check(from_code="0101", to_code="9999"):
     old_snapshot_id = get_latest_snapshot_id()
 
     try:
-        data = fetch_hts(from_code=from_code, to_code=to_code)
+        try:
+            data = fetch_with_hard_timeout(from_code, to_code, max_seconds=1500)
+        except FutureTimeoutError:
+            log_run(None, False, False, "Fetch timed out after 120s (server likely slow/throttling)")
+            print("Fetch timed out — giving up for this run.")
+            return
     except Exception as e:
         log_run(None, False, False, f"Fetch failed: {e}")
         print(f"Fetch failed: {e}")
@@ -109,3 +115,8 @@ def prune_old_snapshots():
             print(f"Pruned {deleted_count} old snapshot(s).")
     finally:
         session.close()
+
+def fetch_with_hard_timeout(from_code, to_code, max_seconds=120):
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(fetch_hts, from_code, to_code)
+        return future.result(timeout=max_seconds)
